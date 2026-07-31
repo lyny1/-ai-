@@ -1,0 +1,6 @@
+{
+  "name": "Planarian Neoblast Regeneration & Drug Effect Simulator",
+  "description": "Paper-backed simulation tool evaluating direct neoblast stem cell regeneration vs indirect neuro-stimulation stress in Planaria under drug exposures.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
