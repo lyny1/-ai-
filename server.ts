@@ -12,16 +12,38 @@ async function startServer() {
 
   app.use(express.json({ limit: '10mb' }));
 
+  // Check Gemini API Key configuration on startup
+  if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_API_KEY.trim()) {
+    console.error('GEMINI_API_KEY is not configured');
+  }
+
+  // Helper function to sanitize logs and strip potential API keys
+  function sanitizeError(error: any): { statusCode: number; message: string } {
+    const rawMsg = error?.message || String(error || 'Unknown error');
+    const statusCode = error?.status || error?.statusCode || 500;
+    let cleanMsg = rawMsg;
+
+    if (process.env.GEMINI_API_KEY) {
+      cleanMsg = cleanMsg.replaceAll(process.env.GEMINI_API_KEY, '[REDACTED_KEY]');
+    }
+    cleanMsg = cleanMsg
+      .replace(/key=[^&"'\s]+/gi, 'key=[REDACTED]')
+      .replace(/x-goog-api-key:\s*[^\s]+/gi, 'x-goog-api-key: [REDACTED]');
+
+    return { statusCode, message: cleanMsg };
+  }
+
   // Initialize Gemini Client server-side lazily
   let aiClient: GoogleGenAI | null = null;
   function getGenAI(): GoogleGenAI {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey || !apiKey.trim()) {
+      console.error('GEMINI_API_KEY is not configured');
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
     if (!aiClient) {
-      const apiKey = process.env.GEMINI_API_KEY;
-      if (!apiKey) {
-        console.warn('GEMINI_API_KEY environment variable is missing.');
-      }
       aiClient = new GoogleGenAI({
-        apiKey: apiKey || '',
+        apiKey: apiKey,
         httpOptions: {
           headers: {
             'User-Agent': 'aistudio-build',
@@ -34,8 +56,49 @@ async function startServer() {
 
   // API endpoint: Health check
   app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    const isConfigured = Boolean(
+      process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim() !== ''
+    );
+    res.json({
+      status: 'ok',
+      geminiKeyConfigured: isConfigured,
+    });
   });
+
+  // API endpoint: Gemini connection test
+  const handleGeminiTest = async (req: express.Request, res: express.Response) => {
+    try {
+      if (!process.env.GEMINI_API_KEY || !process.env.GEMINI_API_KEY.trim()) {
+        console.error('GEMINI_API_KEY is not configured');
+        return res.status(500).json({
+          success: false,
+          error: 'GEMINI_API_KEY is not configured',
+        });
+      }
+
+      const ai = getGenAI();
+      await ai.models.generateContent({
+        model: 'gemini-3.6-flash',
+        contents: 'Test connection',
+      });
+
+      res.json({
+        success: true,
+        message: 'Gemini API connection successful',
+      });
+    } catch (error: any) {
+      const { statusCode, message } = sanitizeError(error);
+      console.error(`Gemini API Error [Status ${statusCode}]: ${message}`);
+      res.status(statusCode).json({
+        success: false,
+        error: 'Gemini API connection failed',
+        details: message,
+      });
+    }
+  };
+
+  app.get('/api/gemini-test', handleGeminiTest);
+  app.post('/api/gemini-test', handleGeminiTest);
 
   // API endpoint: Live Literature Search for Planarian Neoblasts & Drug Effects
   app.post('/api/search-literature', async (req, res) => {
@@ -124,8 +187,9 @@ Return ONLY valid JSON array. No markdown markup or conversational text outside 
 
       res.json({ papers, query: searchQuery });
     } catch (error: any) {
-      console.error('Error in search-literature route:', error);
-      res.status(500).json({ error: 'Failed to search literature', details: error.message });
+      const { statusCode, message } = sanitizeError(error);
+      console.error(`Gemini API Error in /api/search-literature [Status ${statusCode}]: ${message}`);
+      res.status(statusCode).json({ error: 'Failed to search literature', details: message });
     }
   });
 
@@ -224,8 +288,8 @@ Return your response strictly as valid JSON matching this schema:
             if (response) break;
           } catch (err: any) {
             lastError = err;
-            console.warn(`Attempt ${attempt} for model ${modelName} failed:`, err?.message || err);
-            // If it's a 503 or transient error, delay before retrying
+            const { statusCode, message } = sanitizeError(err);
+            console.warn(`Attempt ${attempt} for model ${modelName} failed [Status ${statusCode}]: ${message}`);
             if (attempt < 3) {
               await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
             }
@@ -242,10 +306,11 @@ Return your response strictly as valid JSON matching this schema:
       const parsedData = JSON.parse(responseText);
       res.json(parsedData);
     } catch (error: any) {
-      console.error('Error in Gemini analysis route:', error);
-      res.status(500).json({
+      const { statusCode, message } = sanitizeError(error);
+      console.error(`Gemini API Error in /api/analyze-experiment [Status ${statusCode}]: ${message}`);
+      res.status(statusCode).json({
         error: 'Failed to analyze experiment via Gemini AI',
-        details: error.message || 'Unknown error',
+        details: message,
       });
     }
   });
