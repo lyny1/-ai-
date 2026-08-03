@@ -23,7 +23,7 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
   selectedDay,
   onSelectDay,
 }) => {
-  const [activeTab, setActiveTab] = useState<'regen' | 'stem' | 'gliding' | 'scrunch' | 'hyper' | 'stress'>('regen');
+  const [activeTab, setActiveTab] = useState<'regen' | 'stem' | 'gliding' | 'distance' | 'turns' | 'bend' | 'spasms' | 'phototaxis'>('regen');
 
   // Prepare combined time series dataset for Recharts
   const chartData = comparison.submersion.timeSeries.map((sub, idx) => {
@@ -39,6 +39,11 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
       submersionScrunch: sub.scrunchingFreq,
       submersionHyper: sub.hyperkinesiaScore,
       submersionStress: sub.stressIndex,
+      submersionDist: sub.totalDistance ?? comparison.submersion.totalDistance,
+      submersionTurn: sub.turnCount ?? comparison.submersion.turnCount,
+      submersionBend: sub.bodyBendingDegree ?? comparison.submersion.bodyBendingDegree,
+      submersionSpasm: sub.spasmFrequency ?? comparison.submersion.spasmFrequency,
+      submersionLight: sub.lightAvoidanceResponse ?? comparison.submersion.lightAvoidanceResponse,
 
       // Targeted
       targetedRegen: targ.regenerationRate,
@@ -47,6 +52,11 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
       targetedScrunch: targ.scrunchingFreq,
       targetedHyper: targ.hyperkinesiaScore,
       targetedStress: targ.stressIndex,
+      targetedDist: targ.totalDistance ?? comparison.targeted.totalDistance,
+      targetedTurn: targ.turnCount ?? comparison.targeted.turnCount,
+      targetedBend: targ.bodyBendingDegree ?? comparison.targeted.bodyBendingDegree,
+      targetedSpasm: targ.spasmFrequency ?? comparison.targeted.spasmFrequency,
+      targetedLight: targ.lightAvoidanceResponse ?? comparison.targeted.lightAvoidanceResponse,
     };
   });
 
@@ -61,12 +71,12 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
             </h2>
           </div>
           <span className="text-[10px] sm:text-xs bg-[#f0f0eb] border border-[#d6d6ce] text-[#5a5a40] font-semibold px-2.5 py-0.5 rounded-full shrink-0 whitespace-nowrap">
-            실시간 추이 비교
+            7대 생리/행동 지표 추이
           </span>
         </div>
 
-        {/* Tab selector grid for perfect alignment */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 bg-[#f5f5f0] p-1.5 rounded-xl border border-[#d6d6ce] text-xs">
+        {/* Tab selector bar with horizontal scroll sliding to prevent text overlap */}
+        <div className="flex items-center gap-1.5 bg-[#f5f5f0] p-1.5 rounded-xl border border-[#d6d6ce] text-xs overflow-x-auto min-w-0">
           <button
             onClick={() => setActiveTab('regen')}
             className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
@@ -80,18 +90,6 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
           </button>
 
           <button
-            onClick={() => setActiveTab('stem')}
-            className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'stem'
-                ? 'bg-[#3d6a70] text-white font-bold shadow-2xs'
-                : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5 shrink-0" />
-            <span>줄기세포 활성</span>
-          </button>
-
-          <button
             onClick={() => setActiveTab('gliding')}
             className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
               activeTab === 'gliding'
@@ -100,43 +98,79 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
             }`}
           >
             <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>글라이딩 (%)</span>
+            <span>① 이동 속도</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('scrunch')}
+            onClick={() => setActiveTab('distance')}
             className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'scrunch'
+              activeTab === 'distance'
+                ? 'bg-[#5a5a40] text-white font-bold shadow-2xs'
+                : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
+            }`}
+          >
+            <Activity className="w-3.5 h-3.5 shrink-0" />
+            <span>② 이동 거리</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('turns')}
+            className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
+              activeTab === 'turns'
                 ? 'bg-[#8a6a30] text-white font-bold shadow-2xs'
                 : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
             }`}
           >
             <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>스크런칭 (회)</span>
+            <span>③ 방향 전환</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('hyper')}
+            onClick={() => setActiveTab('bend')}
             className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'hyper'
+              activeTab === 'bend'
                 ? 'bg-[#8a4a40] text-white font-bold shadow-2xs'
                 : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
             }`}
           >
             <Activity className="w-3.5 h-3.5 shrink-0" />
-            <span>과운동증</span>
+            <span>④ 몸체 굽힘</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('stress')}
+            onClick={() => setActiveTab('spasms')}
             className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
-              activeTab === 'stress'
+              activeTab === 'spasms'
                 ? 'bg-[#b83220] text-white font-bold shadow-2xs'
                 : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
             }`}
           >
             <HeartPulse className="w-3.5 h-3.5 shrink-0" />
-            <span>스트레스 지수</span>
+            <span>⑤ 경련/떨림</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('phototaxis')}
+            className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
+              activeTab === 'phototaxis'
+                ? 'bg-[#3d6a70] text-white font-bold shadow-2xs'
+                : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 shrink-0" />
+            <span>⑥ 빛 회피</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('stem')}
+            className={`flex items-center justify-center space-x-1 px-2 py-1.5 rounded-lg text-[11px] font-semibold transition shrink-0 whitespace-nowrap cursor-pointer ${
+              activeTab === 'stem'
+                ? 'bg-[#6a4a70] text-white font-bold shadow-2xs'
+                : 'text-[#6a6a60] hover:text-[#1a1a1a] hover:bg-[#eaeae2]'
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5 shrink-0" />
+            <span>줄기세포</span>
           </button>
         </div>
       </div>
@@ -226,21 +260,105 @@ export const MetricsCharts: React.FC<MetricsChartsProps> = ({
               </>
             )}
 
-            {activeTab === 'scrunch' && (
+            {activeTab === 'distance' && (
               <>
                 <Line
                   type="monotone"
-                  dataKey="submersionScrunch"
-                  name="일반 침지법 스크런칭 (회/분)"
+                  dataKey="submersionDist"
+                  name="일반 침지법 총 이동 거리 (mm/분)"
+                  stroke="#c86a30"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetedDist"
+                  name="선택적 전달 총 이동 거리 (mm/분)"
+                  stroke="#5a5a40"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </>
+            )}
+
+            {activeTab === 'turns' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="submersionTurn"
+                  name="일반 침지법 방향 전환 빈도 (회/분)"
+                  stroke="#c86a30"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetedTurn"
+                  name="선택적 전달 방향 전환 빈도 (회/분)"
+                  stroke="#8a6a30"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </>
+            )}
+
+            {activeTab === 'bend' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="submersionBend"
+                  name="일반 침지법 몸체 굴곡각 (°)"
                   stroke="#b83220"
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                 />
                 <Line
                   type="monotone"
-                  dataKey="targetedScrunch"
-                  name="선택적 전달 스크런칭 (회/분)"
-                  stroke="#6a4a70"
+                  dataKey="targetedBend"
+                  name="선택적 전달 몸체 굴곡각 (°)"
+                  stroke="#8a4a40"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </>
+            )}
+
+            {activeTab === 'spasms' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="submersionSpasm"
+                  name="일반 침지법 경련/떨림 빈도 (회/분)"
+                  stroke="#b83220"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetedSpasm"
+                  name="선택적 전달 경련/떨림 빈도 (회/분)"
+                  stroke="#3d6a70"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+              </>
+            )}
+
+            {activeTab === 'phototaxis' && (
+              <>
+                <Line
+                  type="monotone"
+                  dataKey="submersionLight"
+                  name="일반 침지법 빛 회피 반응 (%)"
+                  stroke="#c86a30"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="targetedLight"
+                  name="선택적 전달 빛 회피 반응 (%)"
+                  stroke="#3d6a70"
                   strokeWidth={2.5}
                   dot={{ r: 3 }}
                 />

@@ -8,7 +8,7 @@ dotenv.config();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3000;
 
   app.use(express.json({ limit: '10mb' }));
 
@@ -35,6 +35,98 @@ async function startServer() {
   // API endpoint: Health check
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // API endpoint: Live Literature Search for Planarian Neoblasts & Drug Effects
+  app.post('/api/search-literature', async (req, res) => {
+    try {
+      const { drugName, query } = req.body;
+      const searchQuery = query || `planarian neoblast cell division mitosis regeneration ${drugName || 'nicotine'}`;
+
+      const prompt = `Search for real scientific research papers and PubMed literature regarding planarian stem cells (neoblasts), cell division (mitosis), regeneration, or behavioral toxicity related to: "${searchQuery}".
+
+Find 2 to 3 real or highly accurate peer-reviewed studies published in scientific journals (e.g., Development, Dev Biol, Neurotoxicology, Scientific Reports, PLoS ONE).
+Return a JSON array of objects with the following structure:
+[
+  {
+    "title": "Full title of paper",
+    "authors": "Author list (e.g. Smith A, et al.)",
+    "year": 2021,
+    "journal": "Journal Name",
+    "doi": "10.xxxx/xxxxx or empty string",
+    "pubmedId": "PubMed ID or empty string",
+    "drugId": "${(drugName || 'nicotine').toLowerCase()}",
+    "drugName": "${drugName || 'Nicotine'}",
+    "concentration": "tested concentration range",
+    "minConcValue": 0.1,
+    "maxConcValue": 1.0,
+    "cutLocation": "trunk",
+    "findings": {
+      "regenerationRateDay7": 70,
+      "regenerationRateDay14": 90,
+      "stemCellActivityIndex": 75,
+      "eyeSpotEtaDays": 5.0,
+      "completeEtaDays": 9.5,
+      "scrunchingFrequency": 10.0,
+      "hyperkinesiaScore": 60,
+      "survivalRate": 95,
+      "stressIndex": 50
+    },
+    "notes": "Key findings regarding neoblast mitosis, cell division rate, and regeneration.",
+    "isRealData": true
+  }
+]
+Return ONLY valid JSON array. No markdown markup or conversational text outside the JSON.`;
+
+      const ai = getGenAI();
+      const modelsToTry = ['gemini-3.6-flash', 'gemini-3.6-pro'];
+      let response = null;
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        for (let attempt = 1; attempt <= 2; attempt++) {
+          try {
+            response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt,
+              config: {
+                tools: [{ googleSearch: {} }],
+              },
+            });
+            if (response) break;
+          } catch (err: any) {
+            lastError = err;
+            if (attempt < 2) {
+              await new Promise((r) => setTimeout(r, 800));
+            }
+          }
+        }
+        if (response) break;
+      }
+
+      if (!response) {
+        throw lastError || new Error('Search failed');
+      }
+
+      const text = response.text || '[]';
+      // Clean json string from potential markdown codeblocks
+      const cleanedJson = text.replace(/```json/g, '').replace(/```/g, '').trim();
+      let papers = [];
+      try {
+        papers = JSON.parse(cleanedJson);
+      } catch (e) {
+        // Fallback extract json array using regex
+        const match = cleanedJson.match(/\[\s*\{[\s\S]*\}\s*\]/);
+        if (match) {
+          papers = JSON.parse(match[0]);
+        }
+      }
+
+      res.json({ papers, query: searchQuery });
+    } catch (error: any) {
+      console.error('Error in search-literature route:', error);
+      res.status(500).json({ error: 'Failed to search literature', details: error.message });
+    }
   });
 
   // API endpoint: Gemini Paper Analysis & Mechanism Explanation
@@ -89,7 +181,7 @@ Provide a scientific analysis in Korean (한국어) with the following structure
 1. **literatureMatchSummary**: Compare this experiment against published literature. Identify similar real-world published studies on planarian regeneration.
 2. **directNeoblastMechanism**: Explain the direct cellular/molecular mechanism on neoblasts (e.g. piwi/smedwi, ERK/mTOR signaling, mitosis G2/M arrest, bioelectric ion channels, blastema migration).
 3. **indirectNeuroStressMechanism**: Explain the indirect neuro-muscular stress mechanism (e.g., cholinergic/adrenergic motor excitation, C-shape scrunching reflexes, muscular exhaustion).
-4. **deliveryMethodComparison**: Explain why Targeted Delivery (Hydrogel/Nanoparticle wound patch) reduces systemic neuro-stress while maintaining or enhancing local neoblast regeneration.
+4. **deliveryMethodComparison**: Explain why Targeted Delivery (Hydrogel/Nanoparticle wound patch) reduces systemic neuro-stress while maintaining or enhancing local neoblast regeneration. Note: If the drug is Acetylcholine (or cholinergic), explicitly explain that Acetylcholine is rapidly hydrolyzed within seconds in vivo by acetylcholinesterase (AChE), making simple local delivery challenging, and recommend improvements like substituting with AChE-resistant analogs such as Carbachol or nanoparticle encapsulation. Also note that all drugs should be checked for local delivery efficiency.
 5. **scientificConclusion**: Concise takeaway for students or researchers.
 6. **references**: List 2-3 key scientific references with Title, Authors, Year, Journal, and DOI/PubMed ID if available.
 
@@ -114,14 +206,37 @@ Return your response strictly as valid JSON matching this schema:
 }`;
 
       const ai = getGenAI();
-      const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
-        contents: prompt,
-        config: {
-          responseMimeType: 'application/json',
-          temperature: 0.2,
-        },
-      });
+      const modelsToTry = ['gemini-3.6-flash', 'gemini-3.6-pro'];
+      let response = null;
+      let lastError: any = null;
+
+      for (const modelName of modelsToTry) {
+        for (let attempt = 1; attempt <= 3; attempt++) {
+          try {
+            response = await ai.models.generateContent({
+              model: modelName,
+              contents: prompt,
+              config: {
+                responseMimeType: 'application/json',
+                temperature: 0.2,
+              },
+            });
+            if (response) break;
+          } catch (err: any) {
+            lastError = err;
+            console.warn(`Attempt ${attempt} for model ${modelName} failed:`, err?.message || err);
+            // If it's a 503 or transient error, delay before retrying
+            if (attempt < 3) {
+              await new Promise((resolve) => setTimeout(resolve, 1000 * attempt));
+            }
+          }
+        }
+        if (response) break;
+      }
+
+      if (!response) {
+        throw lastError || new Error('All model generation attempts failed');
+      }
 
       const responseText = response.text || '{}';
       const parsedData = JSON.parse(responseText);

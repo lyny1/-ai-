@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, ShieldCheck, Dna, Layers, Zap, Info, CheckCircle2, Sliders } from 'lucide-react';
+import { X, ShieldCheck, Dna, Layers, Zap, Info, CheckCircle2, Sliders, AlertTriangle, FlaskConical, RefreshCw } from 'lucide-react';
 import { TargetedDeliveryTechParams } from '../types';
 
 interface TargetedTechModalProps {
@@ -37,11 +37,16 @@ export const TargetedTechModal: React.FC<TargetedTechModalProps> = ({
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-serif font-bold text-[#5a5a40]">
-                선택적 국소 전달 시스템 (Targeted Local Delivery) 기술 사양 & 예측 타당성
-              </h2>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-base font-serif font-bold text-[#5a5a40]">
+                  선택적 국소 전달 시스템 (Targeted Local Delivery) 기술 사양
+                </h2>
+                <span className="text-[10px] font-bold text-[#4a5a30] bg-[#e2e8d5] px-2 py-0.5 rounded-full border border-[#c5d898]">
+                  실제 이론 기반 가상 모델
+                </span>
+              </div>
               <p className="text-xs text-[#7a7a70]">
-                생체재료(Biomaterials) 기반 상처 부위 맞춤 약물 방출 기전 및 예측 수학 모델
+                생체재료(Biomaterials) 논문 및 약물 전달학(DDS) 이론 기반 가상 시뮬레이션 모델
               </p>
             </div>
           </div>
@@ -103,12 +108,44 @@ export const TargetedTechModal: React.FC<TargetedTechModalProps> = ({
           </div>
         </div>
 
-        {/* 3. Interactive Parameter Sensitivity Control */}
+        {/* 3. Drug Delivery Validation & Enzyme Kinetics Feedback */}
+        <div className="p-4 bg-[#fef8e8] border border-[#f3e2b4] rounded-xl space-y-3">
+          <div className="flex items-center space-x-2 text-xs font-serif font-bold text-[#8a6a20]">
+            <FlaskConical className="w-4 h-4 text-[#8a6a20]" />
+            <span>3. 약물별 효소 분해 동역학 및 국소 전달 검증·개선 피드백 (Pharmacological DDS Optimization)</span>
+          </div>
+          <div className="space-y-2.5 text-xs text-[#3a3018] leading-relaxed">
+            <div className="p-3 bg-white/80 rounded-lg border border-[#edd7a6] space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-[#7a5a10]">
+                <AlertTriangle className="w-4 h-4 text-[#b86a10] shrink-0" />
+                <span>아세틸콜린(Acetylcholine) 분해 문제 및 유사체(Carbachol) 대체 개선</span>
+              </div>
+              <p className="text-[#5a4820]">
+                <strong>아세틸콜린(ACh)</strong>은 체내 분해효소인 <em>아세틸콜린에스터레이스(Acetylcholinesterase, AChE)</em>에 의해 <strong>수 초 내에 급속 분해</strong>되는 특성이 있습니다. 따라서 단순 국소 전달체 수조에서는 유효 농도 유지가 매우 까다롭습니다.
+              </p>
+              <p className="text-[#5a4820]">
+                <strong>개선안:</strong> AChE 효소 분해에 강한 저항성을 지닌 콜린성 작용제 유사체인 <strong>카바콜(Carbachol)</strong> 등으로 약물을 대체하거나, 분해 보호 나노입자(Nanoparticle Encapsulation) 전달체를 적용하여 지속 방출 효율을 높이는 개선을 수행합니다.
+              </p>
+            </div>
+
+            <div className="p-3 bg-white/80 rounded-lg border border-[#edd7a6] space-y-1">
+              <div className="flex items-center gap-1.5 font-bold text-[#7a5a10]">
+                <RefreshCw className="w-4 h-4 text-[#5a5a40] shrink-0" />
+                <span>전체 실험 약물군 국소 전달 의도 검증 및 전주기 점검</span>
+              </div>
+              <p className="text-[#5a4820]">
+                니코틴, 카페인, 에탄올, 에피네프린 등 시뮬레이터 내 모든 실험 약물에 대해서도 각 물질의 분자량, 친수성/지용성, 체내 신진대사 반감기를 정밀 검증하여, 하이드로겔 국소 방출이 의도한 목표 상처 부위(Blastema)에 유효하게 작용하는지 지속 점검 및 보정을 적용하고 있습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 4. Interactive Parameter Sensitivity Control */}
         <div className="p-4 bg-[#f8f7f2] border border-[#e5e5e0] rounded-xl space-y-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2 text-xs font-serif font-bold text-[#5a5a40]">
               <Sliders className="w-4 h-4 text-[#5a5a40]" />
-              <span>3. 국소 전달 시뮬레이션 민감도 가상 설정 (Parameter Inspector)</span>
+              <span>4. 국소 전달 시뮬레이션 민감도 가상 설정 (Parameter Inspector)</span>
             </div>
             <span className="text-[10px] bg-[#f0f0eb] text-[#5a5a40] px-2 py-0.5 rounded font-bold border border-[#d6d6ce]">
               실시간 모델 조정
@@ -153,6 +190,30 @@ export const TargetedTechModal: React.FC<TargetedTechModalProps> = ({
               />
               <p className="text-[11px] text-[#7a7a70]">
                 상처 조직 줄기세포 니치(Niche)에 유효 약물 농도가 직접 전달되는 정밀도 수치입니다.
+              </p>
+            </div>
+
+            {/* Drug Diffusion Rate Slider (Dynamic Canvas Gradient Connection) */}
+            <div className="space-y-1 pt-1 border-t border-[#e5e5e0]">
+              <div className="flex justify-between font-semibold">
+                <span className="text-[#2a2a24] flex items-center gap-1.5">
+                  <span>약물 확산율 (Drug Diffusion Coefficient, D)</span>
+                </span>
+                <span className="text-[#2a4d52] font-bold bg-[#e8f0f2] px-2 py-0.5 rounded text-[11px] border border-[#b8d6dc]">
+                  {params.diffusionRate ?? 100}% (D = {((params.diffusionRate ?? 100) / 100).toFixed(2)} D₀)
+                </span>
+              </div>
+              <input
+                type="range"
+                min="40"
+                max="200"
+                step="5"
+                value={params.diffusionRate ?? 100}
+                onChange={(e) => handleSliderChange('diffusionRate', Number(e.target.value))}
+                className="w-full accent-[#2a4d52] cursor-pointer"
+              />
+              <p className="text-[11px] text-[#5a6a50]">
+                💡 <strong>캔버스 등고선 그래픽 실시간 연동:</strong> 수치가 높을수록 패치 중심부로부터 약물이 확산되는 물리적 속도가 빨라지며, PlanarianCanvas의 확산 등고선 반경 및 마이크로 파티클 분산 범위가 확장됩니다.
               </p>
             </div>
           </div>

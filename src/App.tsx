@@ -15,6 +15,14 @@ import { ExperimentConfig, LiteratureEntry, DrugInfo, ExperimentTab, TargetedDel
 import { runSideBySideComparison } from './utils/simulationEngine';
 import { Activity, Sparkles, Zap, Brain, Dna, HelpCircle, Layers, Bot, BookOpen, Split, CheckCircle2 } from 'lucide-react';
 
+// Helper function for dynamic tab title generation
+const getDynamicTabTitle = (config: ExperimentConfig, index: number, drugList: DrugInfo[]) => {
+  const drug = drugList.find((d) => d.id === config.drugId);
+  const drugName = drug ? drug.nameKo.split(' ')[0] : config.drugId;
+  const delivery = config.deliveryMethod === 'targeted' ? '국소' : '침지';
+  return `조건 ${index + 1}: ${drugName} ${config.concentration}${config.unit} (${delivery})`;
+};
+
 export default function App() {
   const [drugs, setDrugs] = useState<DrugInfo[]>(INITIAL_DRUGS);
   const [database, setDatabase] = useState<LiteratureEntry[]>(INITIAL_LITERATURE_DATABASE);
@@ -23,7 +31,7 @@ export default function App() {
   const [tabs, setTabs] = useState<ExperimentTab[]>([
     {
       id: 'tab-1',
-      title: '조건 1: 침지 노출',
+      title: '조건 1: 니코틴 0.2mM (침지)',
       config: {
         drugId: 'nicotine',
         concentration: 0.2,
@@ -35,7 +43,7 @@ export default function App() {
     },
     {
       id: 'tab-2',
-      title: '조건 2: 국소 전달',
+      title: '조건 2: 니코틴 0.2mM (국소 패치)',
       config: {
         drugId: 'nicotine',
         concentration: 0.2,
@@ -66,6 +74,7 @@ export default function App() {
     releaseKinetics: 'Zero-order local matrix diffusion (24-72h release)',
     neuroShieldingEfficiency: 75,
     blastemaTargetingAffinity: 90,
+    diffusionRate: 100,
     mmpCleavageTrigger: true,
   });
 
@@ -108,20 +117,63 @@ export default function App() {
   // Active config updater
   const handleUpdateActiveConfig = (newConfig: ExperimentConfig) => {
     setTabs((prev) =>
-      prev.map((tab) => (tab.id === activeTabId ? { ...tab, config: newConfig } : tab))
+      prev.map((tab, idx) =>
+        tab.id === activeTabId
+          ? {
+              ...tab,
+              config: newConfig,
+              title: getDynamicTabTitle(newConfig, idx, drugs),
+            }
+          : tab
+      )
     );
   };
 
   // Tab Manager Handlers
   const handleAddTab = () => {
     const newId = `tab-${Date.now()}`;
+    const defaultConfig: ExperimentConfig = {
+      drugId: 'ethanol',
+      concentration: 0.5,
+      unit: '%',
+      exposureHours: 48,
+      cutLocation: 'trunk',
+      cutType: 'transverse',
+      deliveryMethod: 'submersion',
+    };
     const newTab: ExperimentTab = {
       id: newId,
-      title: `조건 ${tabs.length + 1}`,
-      config: { ...activeTab.config },
+      title: getDynamicTabTitle(defaultConfig, tabs.length, drugs),
+      config: defaultConfig,
     };
     setTabs((prev) => [...prev, newTab]);
     setActiveTabId(newId);
+  };
+
+  const handleDuplicateTab = (targetTabId?: string) => {
+    const idToDup = targetTabId || activeTabId;
+    const targetTab = tabs.find((t) => t.id === idToDup) || activeTab;
+    const newId = `tab-${Date.now()}`;
+    const duplicatedConfig: ExperimentConfig = { ...targetTab.config };
+    const baseTitle = getDynamicTabTitle(duplicatedConfig, tabs.length, drugs);
+    const newTab: ExperimentTab = {
+      id: newId,
+      title: `${baseTitle} (복제)`,
+      config: duplicatedConfig,
+    };
+    const targetIdx = tabs.findIndex((t) => t.id === idToDup);
+    if (targetIdx !== -1) {
+      const updated = [...tabs];
+      updated.splice(targetIdx + 1, 0, newTab);
+      setTabs(updated);
+    } else {
+      setTabs((prev) => [...prev, newTab]);
+    }
+    setActiveTabId(newId);
+  };
+
+  const handleReorderTabs = (reorderedTabs: ExperimentTab[]) => {
+    setTabs(reorderedTabs);
   };
 
   const handleDeleteTab = (idToDelete: string) => {
@@ -234,22 +286,10 @@ export default function App() {
           </div>
         </div>
 
-        {/* SIDE-BY-SIDE SPLIT WORKSPACE GRID (LEFT: SIMULATOR & CONTROLS, RIGHT: QUANTITATIVE ANALYSIS & AI) */}
+        {/* SIDE-BY-SIDE SPLIT WORKSPACE GRID (LEFT: CONTROLS & COMPARISON, RIGHT: SIMULATOR & QUANTITATIVE ANALYSIS) */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-          {/* LEFT COLUMN: WINDOW 1 (실험실 & 시뮬레이터) */}
+          {/* LEFT COLUMN: WINDOW 1 (실험 설정 & 처리 방식 비교 분석) */}
           <div className="space-y-6 min-w-0">
-            <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-[#e5e5e0] shadow-2xs">
-              <div className="flex items-center space-x-2 text-xs font-serif font-bold text-[#5a5a40]">
-                <Layers className="w-4 h-4 text-[#5a5a40]" />
-                <span>창 1: 🧪 실시간 실험실 & 행동 시뮬레이터</span>
-              </div>
-              {isDualMode && (
-                <span className="bg-[#3d6a70] text-white text-[10px] px-2 py-0.5 rounded font-sans font-bold">
-                  듀얼 비교 모드
-                </span>
-              )}
-            </div>
-
             {/* 1. Experimental Setup Controls with Multi-Tab & Dual Mode Toggle */}
             <ExperimentControls
               drugs={drugs}
@@ -257,7 +297,9 @@ export default function App() {
               activeTabId={activeTabId}
               onSelectTab={setActiveTabId}
               onAddTab={handleAddTab}
+              onDuplicateTab={handleDuplicateTab}
               onDeleteTab={handleDeleteTab}
+              onReorderTabs={handleReorderTabs}
               isDualMode={isDualMode}
               onToggleDualMode={() => setIsDualMode((prev) => !prev)}
               dualTabId={dualTabId}
@@ -268,80 +310,7 @@ export default function App() {
               onOpenTargetedTechModal={() => setIsTargetedTechOpen(true)}
             />
 
-            {/* 2. Interactive Anatomical Canvas & Morphology (Single or Dual Side-by-Side Feed View) */}
-            {!isDualMode ? (
-              <PlanarianCanvas
-                simulation={currentSimulation}
-                selectedDay={selectedDay}
-                onSelectDay={setSelectedDay}
-              />
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between bg-[#e2e8d5] p-3 rounded-xl border border-[#c5d898] break-keep">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-[#4a5a30]">
-                    <Split className="w-4 h-4 shrink-0" />
-                    <span>🔬 실시간 시뮬레이션 모니터 피드 (Dual Stream)</span>
-                  </div>
-                  <span className="text-[11px] text-[#5a5a40] font-medium shrink-0">
-                    스크롤하여 실시간 비교
-                  </span>
-                </div>
-
-                {/* Simulation Feed Container */}
-                <div className="space-y-5">
-                  {/* FEED MONITOR 1 */}
-                  <div className="bg-white border border-[#e5e5e0] rounded-2xl p-4 shadow-2xs space-y-2">
-                    <div className="text-xs font-bold text-[#5a5a40] flex items-center justify-between pb-2 border-b border-[#f0f0eb] break-keep gap-2">
-                      <span className="flex items-center gap-1.5 font-serif text-sm">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#5a5a40] inline-block animate-pulse"></span>
-                        [FEED MONITOR 01] 조건 1: {activeTab.title}
-                      </span>
-                      <span className="text-[10px] bg-[#f0f0eb] px-2.5 py-1 rounded-lg border border-[#d6d6ce] font-sans font-bold shrink-0 whitespace-nowrap">
-                        {activeTab.config.drugId} ({activeTab.config.deliveryMethod === 'targeted' ? '국소 전달' : '일반 침지'})
-                      </span>
-                    </div>
-                    <PlanarianCanvas
-                      simulation={currentSimulation}
-                      selectedDay={selectedDay}
-                      onSelectDay={setSelectedDay}
-                    />
-                  </div>
-
-                  {/* FEED MONITOR 2 */}
-                  <div className="bg-white border border-[#e5e5e0] rounded-2xl p-4 shadow-2xs space-y-2">
-                    <div className="text-xs font-bold text-[#3d6a70] flex items-center justify-between pb-2 border-b border-[#f0f0eb] break-keep gap-2">
-                      <span className="flex items-center gap-1.5 font-serif text-sm">
-                        <span className="w-2.5 h-2.5 rounded-full bg-[#3d6a70] inline-block animate-pulse"></span>
-                        [FEED MONITOR 02] 조건 2: {dualTab.title}
-                      </span>
-                      <span className="text-[10px] bg-[#e8f0f2] px-2.5 py-1 rounded-lg border border-[#3d6a70]/30 font-sans font-bold text-[#3d6a70] shrink-0 whitespace-nowrap">
-                        {dualTab.config.drugId} ({dualTab.config.deliveryMethod === 'targeted' ? '국소 전달' : '일반 침지'})
-                      </span>
-                    </div>
-                    <PlanarianCanvas
-                      simulation={currentDualSimulation}
-                      selectedDay={selectedDay}
-                      onSelectDay={setSelectedDay}
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* RIGHT COLUMN: WINDOW 2 (정량 분석, 차트, 비교, AI 검증) */}
-          <div className="space-y-6 min-w-0">
-            <div className="flex items-center justify-between bg-white px-4 py-2.5 rounded-xl border border-[#e5e5e0] shadow-2xs break-keep">
-              <div className="flex items-center space-x-2 text-xs font-serif font-bold text-[#3d6a70]">
-                <Bot className="w-4 h-4 text-[#3d6a70] shrink-0" />
-                <span>창 2: 📊 정량 분석 & 메커니즘 검증 (Analysis & AI Engine)</span>
-              </div>
-              <span className="text-[11px] text-[#7a7a70] font-medium shrink-0">
-                실시간 연동 데이터 분석
-              </span>
-            </div>
-
-            {/* 1. Direct vs Indirect Executive Impact Cards */}
+            {/* 2. Direct vs Indirect Executive Impact Cards (세 작은 블록) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="p-3.5 bg-white border border-[#e5e5e0] rounded-2xl space-y-1.5 shadow-2xs break-keep">
                 <div className="flex items-center justify-between gap-1">
@@ -407,22 +376,88 @@ export default function App() {
               </div>
             </div>
 
-            {/* 2. Side-by-Side Delivery Method Comparison (Submersion vs Targeted Delivery) */}
+            {/* 3. Side-by-Side Delivery Method Comparison (처리 방식 비교: Submersion vs Targeted Delivery) */}
             <SideBySideComparison
               comparison={activeComparisonResults}
               drugName={activeDrug.nameKo}
               concentration={activeTab.config.concentration}
               unit={activeTab.config.unit}
             />
+          </div>
 
-            {/* 3. Dynamic Time-Series Charts (Days 0 to 14) */}
+          {/* RIGHT COLUMN: WINDOW 2 (모션 시뮬레이션 창 & 정량 분석, 차트, AI 검증) */}
+          <div className="space-y-6 min-w-0">
+            {/* 1. Interactive Anatomical Canvas & Morphology (모션 시뮬레이션 창 - Single or Dual Side-by-Side Feed View) */}
+            {!isDualMode ? (
+              <PlanarianCanvas
+                simulation={currentSimulation}
+                selectedDay={selectedDay}
+                onSelectDay={setSelectedDay}
+                diffusionRate={targetedTechParams.diffusionRate}
+              />
+            ) : (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between bg-[#e2e8d5] p-3 rounded-xl border border-[#c5d898] break-keep">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-[#4a5a30]">
+                    <Split className="w-4 h-4 shrink-0" />
+                    <span>🔬 실시간 시뮬레이션 모니터 피드 (Dual Stream)</span>
+                  </div>
+                  <span className="text-[11px] text-[#5a5a40] font-medium shrink-0">
+                    스크롤하여 실시간 비교
+                  </span>
+                </div>
+
+                {/* Simulation Feed Container */}
+                <div className="space-y-5">
+                  {/* FEED MONITOR 1 */}
+                  <div className="bg-white border border-[#e5e5e0] rounded-2xl p-4 shadow-2xs space-y-2">
+                    <div className="text-xs font-bold text-[#5a5a40] flex items-center justify-between pb-2 border-b border-[#f0f0eb] break-keep gap-2">
+                      <span className="flex items-center gap-1.5 font-serif text-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#5a5a40] inline-block animate-pulse"></span>
+                        [FEED MONITOR 01] 조건 1: {activeTab.title}
+                      </span>
+                      <span className="text-[10px] bg-[#f0f0eb] px-2.5 py-1 rounded-lg border border-[#d6d6ce] font-sans font-bold shrink-0 whitespace-nowrap">
+                        {activeTab.config.drugId} ({activeTab.config.deliveryMethod === 'targeted' ? '국소 전달' : '일반 침지'})
+                      </span>
+                    </div>
+                    <PlanarianCanvas
+                      simulation={currentSimulation}
+                      selectedDay={selectedDay}
+                      onSelectDay={setSelectedDay}
+                      diffusionRate={targetedTechParams.diffusionRate}
+                    />
+                  </div>
+
+                  {/* FEED MONITOR 2 */}
+                  <div className="bg-white border border-[#e5e5e0] rounded-2xl p-4 shadow-2xs space-y-2">
+                    <div className="text-xs font-bold text-[#3d6a70] flex items-center justify-between pb-2 border-b border-[#f0f0eb] break-keep gap-2">
+                      <span className="flex items-center gap-1.5 font-serif text-sm">
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#3d6a70] inline-block animate-pulse"></span>
+                        [FEED MONITOR 02] 조건 2: {dualTab.title}
+                      </span>
+                      <span className="text-[10px] bg-[#e8f0f2] px-2.5 py-1 rounded-lg border border-[#3d6a70]/30 font-sans font-bold text-[#3d6a70] shrink-0 whitespace-nowrap">
+                        {dualTab.config.drugId} ({dualTab.config.deliveryMethod === 'targeted' ? '국소 전달' : '일반 침지'})
+                      </span>
+                    </div>
+                    <PlanarianCanvas
+                      simulation={currentDualSimulation}
+                      selectedDay={selectedDay}
+                      onSelectDay={setSelectedDay}
+                      diffusionRate={targetedTechParams.diffusionRate}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Dynamic Time-Series Charts (Days 0 to 14) */}
             <MetricsCharts
               comparison={activeComparisonResults}
               selectedDay={selectedDay}
               onSelectDay={setSelectedDay}
             />
 
-            {/* 4. Google Gemini AI Deep Biological Analysis Section */}
+            {/* 3. Google Gemini AI Deep Biological Analysis Section */}
             <AiAnalysisSection
               simulation={activeComparisonResults.submersion}
               targetedSimulation={activeComparisonResults.targeted}
@@ -436,6 +471,7 @@ export default function App() {
               currentDrugId={activeTab.config.drugId}
               drugs={drugs}
               matchingPaper={currentSimulation.matchingPaper}
+              onOpenDatabaseModal={() => setIsDatabaseOpen(true)}
             />
           </div>
         </div>

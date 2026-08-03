@@ -184,6 +184,88 @@ export function runSimulation(
     glidingSpeed = Math.round(glidingSpeed);
   }
 
+  // Calculate 7 Specific Behavioral Metrics (Nicotine & Drug Specific dynamics)
+  let totalDistance = 120; // mm/min baseline
+  let turnCount = 5; // turns/min baseline
+  let bodyBendingDegree = 8; // degrees baseline
+  let spasmFrequency = 0.5; // events/min baseline
+  let lightAvoidanceResponse = 98; // % baseline
+  let motorRecoveryTimeHours = 2; // hours baseline
+
+  if (drug.id === 'nicotine') {
+    const timeFactor = Math.min(2.5, Math.pow(config.exposureHours / 24, 0.7));
+    const concTimeEffect = concFactor * timeFactor;
+
+    if (config.deliveryMethod === 'targeted') {
+      if (config.cutLocation === 'anterior') {
+        // 머리 국소 침지: 머리 신경절 및 감각 처리 기능 우선 영향
+        // - 방향 결정 능력 & 빛 회피 반응 저하
+        // - 머리 흔들기 및 방향 전환 증가, 직선 이동 불안정
+        // - 전신 심한 경련보다는 머리 중심의 탐색 행동 이상
+        lightAvoidanceResponse = Math.max(15, Math.round(95 - concTimeEffect * 40));
+        turnCount = Math.min(45, Math.round(6 + concTimeEffect * 22));
+        glidingSpeed = Math.max(15, Math.round(75 - concTimeEffect * 25));
+        bodyBendingDegree = Math.min(50, Math.round(12 + concTimeEffect * 18));
+        spasmFrequency = Math.min(12, Math.round(1.5 + concTimeEffect * 4)); // 전신 경련 억제
+        totalDistance = Math.max(25, Math.round(110 - concTimeEffect * 30));
+        motorRecoveryTimeHours = Math.round(12 + concTimeEffect * 24);
+      } else if (config.cutLocation === 'trunk') {
+        // 몸통 국소 침지: 국소 근육 및 말초 신경 우선 영향
+        // - 국소 수축, C/S자 굽힘, 비대칭 운동, 이동 속도 저하
+        // - 농도/시간 증가 시 국소 수축이 인접 부위로 전이
+        bodyBendingDegree = Math.min(90, Math.round(20 + concTimeEffect * 45)); // C/S자 굽힘 심화
+        glidingSpeed = Math.max(10, Math.round(65 - concTimeEffect * 30));
+        totalDistance = Math.max(20, Math.round(95 - concTimeEffect * 40));
+        spasmFrequency = Math.min(25, Math.round(3 + concTimeEffect * 12));
+        turnCount = Math.round(8 + concTimeEffect * 8);
+        lightAvoidanceResponse = Math.max(40, Math.round(90 - concTimeEffect * 20));
+        motorRecoveryTimeHours = Math.round(18 + concTimeEffect * 32);
+      } else {
+        // 꼬리 국소 침지: 꼬리 추진력 저하, 이동 궤적 곡선 변형, 머리 방향성 상대적 유지
+        lightAvoidanceResponse = Math.max(65, Math.round(95 - concTimeEffect * 15)); // 머리 감각 유지
+        glidingSpeed = Math.max(20, Math.round(70 - concTimeEffect * 28)); // 추진력 감소
+        totalDistance = Math.max(30, Math.round(100 - concTimeEffect * 32));
+        turnCount = Math.round(5 + concTimeEffect * 6);
+        bodyBendingDegree = Math.min(45, Math.round(10 + concTimeEffect * 15));
+        spasmFrequency = Math.min(10, Math.round(1 + concTimeEffect * 5));
+        motorRecoveryTimeHours = Math.round(10 + concTimeEffect * 20);
+      }
+
+      // 절단면 국소 침지 공통: 신경 재연결 및 운동 기능 회복 시간 지연
+      motorRecoveryTimeHours = Math.round(motorRecoveryTimeHours * (1 + concFactor * 0.5));
+    } else {
+      // 전신 침지 (Submersion): 전신적 운동 협응 저하, 반복 행동, 몸체 떨림/경련, 방향 전환 급증, 총 이동 거리 급감
+      totalDistance = Math.max(10, Math.round(110 - concTimeEffect * 55));
+      turnCount = Math.min(50, Math.round(12 + concTimeEffect * 28));
+      bodyBendingDegree = Math.min(85, Math.round(15 + concTimeEffect * 40));
+      spasmFrequency = Math.min(35, Math.round(5 + concTimeEffect * 20));
+      lightAvoidanceResponse = Math.max(10, Math.round(90 - concTimeEffect * 48));
+      glidingSpeed = Math.max(5, Math.round(50 - concTimeEffect * 35));
+      motorRecoveryTimeHours = Math.round(36 + concTimeEffect * 48); // 전신 노출로 회복 지연
+    }
+  } else if (drug.id === 'caffeine') {
+    turnCount = Math.min(40, Math.round(8 + concFactor * 18)); // Head waving
+    totalDistance = Math.max(40, Math.round(120 - concFactor * 25));
+    lightAvoidanceResponse = Math.max(50, Math.round(95 - concFactor * 20));
+    spasmFrequency = Math.min(15, Math.round(2 + concFactor * 6));
+    bodyBendingDegree = Math.min(40, Math.round(10 + concFactor * 12));
+    motorRecoveryTimeHours = Math.round(8 + concFactor * 12);
+  } else if (drug.id === 'ethanol') {
+    totalDistance = Math.max(5, Math.round(110 - concFactor * 60)); // Hypokinesia
+    turnCount = Math.max(1, Math.round(5 - concFactor * 2));
+    lightAvoidanceResponse = Math.max(15, Math.round(90 - concFactor * 45));
+    spasmFrequency = Math.max(0, Math.round(1 - concFactor));
+    bodyBendingDegree = Math.min(30, Math.round(5 + concFactor * 8));
+    motorRecoveryTimeHours = Math.round(24 + concFactor * 36);
+  } else {
+    totalDistance = Math.max(30, Math.round(115 - concFactor * 35));
+    turnCount = Math.round(5 + concFactor * 10);
+    bodyBendingDegree = Math.round(8 + concFactor * 15);
+    spasmFrequency = Math.round(1 + concFactor * 8);
+    lightAvoidanceResponse = Math.max(40, Math.round(95 - concFactor * 25));
+    motorRecoveryTimeHours = Math.round(12 + concFactor * 18);
+  }
+
   // Determine Hyperkinesia Type (과운동증 신경 행동 유형)
   // Types: 'C-like', 'Snake-like', 'Screw-like', 'Normal', 'Hypokinesia'
   let hyperkinesiaType: 'C-like' | 'Snake-like' | 'Screw-like' | 'Normal' | 'Hypokinesia' = 'Normal';
@@ -230,8 +312,10 @@ export function runSimulation(
     primaryDriver = 'direct';
   }
 
-  // Generate 14-day time series data
+  // Generate 14-day dynamic time series data based on physiological response curves
   const timeSeries: DailyMetric[] = [];
+  const exposureDays = config.exposureHours / 24;
+
   for (let day = 0; day <= 14; day++) {
     // Sigmoidal growth curve for regeneration rate
     const midpoint = completeEta * 0.6;
@@ -241,35 +325,90 @@ export function runSimulation(
     const dayRegen = Math.min(100, Math.round(finalRegen14 * progressFactor * 100) / 100);
     const blastemaSize = Math.min(100, Math.round(dayRegen * 0.95));
 
-    // Stem cell activity peaks around day 2-4 during early mitotic burst, then levels off
+    // Neoblast Cell Division (Mitotic Burst Curve):
+    // Bi-phasic proliferation peak around Day 1 (systemic wound response) and Day 3 (blastema-specific proliferation),
+    // followed by cell differentiation into tissue lineages (Day 5-14).
     let dayStemCell = stemCellIndex;
-    if (day >= 1 && day <= 5) {
-      dayStemCell = Math.min(100, stemCellIndex * (1 + 0.25 * Math.sin(((day - 1) / 4) * Math.PI)));
+    if (day === 0) {
+      dayStemCell = Math.max(10, stemCellIndex * 0.85); // Immediate wound shock drop
+    } else if (day === 1) {
+      dayStemCell = Math.min(100, stemCellIndex * 1.28); // First mitotic peak
+    } else if (day === 2) {
+      dayStemCell = Math.min(100, stemCellIndex * 1.15);
+    } else if (day === 3) {
+      dayStemCell = Math.min(100, stemCellIndex * 1.25); // Second mitotic peak (blastema formation)
+    } else if (day === 4) {
+      dayStemCell = Math.min(100, stemCellIndex * 1.05);
+    } else {
+      // Differentiation phase: proliferation drops back to basal homeostatic level
+      const diffDecay = Math.exp(-0.25 * (day - 4));
+      dayStemCell = Math.max(20, Math.min(100, stemCellIndex * (0.65 + 0.35 * diffDecay)));
     }
 
     const eyeSpotVisible = day >= eyeEta;
 
-    // Behavioral stress peaks early (Days 0-3) then adapts or declines as drug metabolizes
+    // Behavioral Dynamics (Hyperkinesia, Scrunching, Stress, and Gliding Locomotion):
     let dayScrunch = scrunchFreq;
+    let dayHyper = hyperScore;
     let dayStress = stressIndex;
-    if (config.exposureHours < 168 && day > config.exposureHours / 24) {
-      const daysAfterWashout = day - config.exposureHours / 24;
-      const decay = Math.exp(-0.4 * daysAfterWashout);
-      dayScrunch = Math.max(0.5, scrunchFreq * decay);
-      dayStress = Math.max(10, stressIndex * (0.3 + 0.7 * decay));
+
+    if (day <= exposureDays) {
+      // Active exposure phase (Day 0 to exposure end)
+      if (day === 0 || day === 1) {
+        // Acute neuro-excitation peak
+        dayHyper = Math.min(100, hyperScore * 1.2);
+        dayScrunch = scrunchFreq * 1.25;
+        dayStress = Math.min(100, stressIndex * 1.15);
+      } else {
+        // Neuro-receptor desensitization (tachyphylaxis) / habituation under continuous exposure
+        const adaptDays = day - 1;
+        const adaptFactor = Math.exp(-0.15 * adaptDays);
+        dayHyper = Math.max(15, hyperScore * (0.5 + 0.5 * adaptFactor));
+        dayScrunch = Math.max(0.5, scrunchFreq * (0.4 + 0.6 * adaptFactor));
+        dayStress = Math.max(15, stressIndex * (0.6 + 0.4 * adaptFactor));
+      }
+    } else {
+      // Post-washout recovery phase (after exposure hours end)
+      const daysAfterWashout = day - exposureDays;
+      const washoutDecay = Math.exp(-0.5 * daysAfterWashout);
+
+      dayHyper = Math.max(10, hyperScore * (0.15 + 0.85 * washoutDecay));
+      dayScrunch = Math.max(0.2, scrunchFreq * washoutDecay);
+      dayStress = Math.max(10, stressIndex * (0.2 + 0.8 * washoutDecay));
     }
 
-    // Daily gliding speed
-    let dayGliding = Math.max(0, Math.min(100, 100 - dayScrunch * 4.5 - (dayStress > 30 ? (dayStress - 30) * 1.1 : 0)));
+    // Gliding speed locomotion efficiency (0-100%):
+    // Day 0 drop due to injury & spasms -> progressively recovers as cilia regenerate & brain reconnects
+    let baseGlidingRecovery = Math.min(100, 20 + (day / 14) * 75); // Ciliary restoration baseline curve
+    let motilityInhibition = (dayScrunch * 3.5) + (dayHyper * 0.4) + (dayStress > 30 ? (dayStress - 30) * 0.8 : 0);
+
+    let dayGliding = Math.max(5, Math.min(100, baseGlidingRecovery - motilityInhibition));
+
     if (drug.id === 'ethanol') {
-      dayGliding = Math.max(5, 100 - concFactor * 45);
+      // Ethanol sedation suppresses locomotion directly
+      const sedationFactor = Math.min(1.0, concFactor * 0.6);
+      if (day <= exposureDays) {
+        dayGliding = Math.max(5, (100 - sedationFactor * 75) * (0.3 + 0.7 * (day / 14)));
+      } else {
+        const postWashout = day - exposureDays;
+        dayGliding = Math.min(100, 30 + postWashout * 12);
+      }
     }
+
     if (config.deliveryMethod === 'targeted') {
-      dayGliding = Math.min(100, dayGliding * 1.4 + 20);
+      // Targeted patch protects ventral ciliary tracts, accelerating locomotion recovery
+      dayGliding = Math.min(100, Math.round(dayGliding * 1.35 + 25));
     }
 
     // Survival rate declines over time if toxic
     const daySurvival = Math.max(0, Math.round(100 - (100 - survivalRate) * (day / 14)));
+
+    // Daily progression scaling for behavioral metrics
+    const dayDist = Math.round(totalDistance * Math.min(1.0, 0.4 + (day / 14) * 0.6));
+    const dayTurn = Math.round(turnCount * Math.max(0.3, 1.2 - (day / 14) * 0.4));
+    const dayBend = Math.round(bodyBendingDegree * Math.max(0.2, 1.1 - (day / 14) * 0.5));
+    const daySpasm = Math.round(spasmFrequency * Math.max(0.1, 1.2 - (day / 14) * 0.6) * 10) / 10;
+    const dayLight = Math.round(lightAvoidanceResponse * Math.min(1.0, 0.5 + (day / 14) * 0.5));
 
     timeSeries.push({
       day,
@@ -278,12 +417,19 @@ export function runSimulation(
       stemCellActivity: Math.round(dayStemCell),
       eyeSpotVisible,
       scrunchingFreq: Math.round(dayScrunch * 10) / 10,
-      hyperkinesiaScore: Math.round(hyperScore),
+      hyperkinesiaScore: Math.round(dayHyper),
       hyperkinesiaType,
       hyperkinesiaTypeLabelKo,
       glidingSpeed: Math.round(dayGliding),
       stressIndex: Math.round(dayStress),
       survivalRate: Math.round(daySurvival),
+
+      totalDistance: dayDist,
+      turnCount: dayTurn,
+      bodyBendingDegree: dayBend,
+      spasmFrequency: daySpasm,
+      lightAvoidanceResponse: dayLight,
+      motorRecoveryTimeHours: motorRecoveryTimeHours,
     });
   }
 
@@ -306,6 +452,13 @@ export function runSimulation(
     glidingSpeed: Math.round(glidingSpeed),
     survivalRate: Math.round(survivalRate),
     stressIndex: Math.round(stressIndex),
+
+    totalDistance: Math.round(totalDistance),
+    turnCount: Math.round(turnCount),
+    bodyBendingDegree: Math.round(bodyBendingDegree),
+    spasmFrequency: Math.round(spasmFrequency * 10) / 10,
+    lightAvoidanceResponse: Math.round(lightAvoidanceResponse),
+    motorRecoveryTimeHours: Math.round(motorRecoveryTimeHours),
 
     directNeoblastImpactScore,
     indirectNeuroStressScore,

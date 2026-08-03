@@ -13,7 +13,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenResearchGuide,
 }) => {
   return (
-    <header className="bg-white border-b border-[#e5e5e0] text-[#1a1a1a] sticky top-0 z-40 shadow-xs">
+    <header className="bg-white border-b border-[#e5e5e0] text-[#1a1a1a] sticky top-0 z-50 shadow-xs">
       <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
         {/* Left Title & Branding */}
         <div className="flex items-center space-x-3">

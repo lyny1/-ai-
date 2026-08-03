@@ -3,6 +3,7 @@
  */
 
 export type CutLocation = 'anterior' | 'trunk' | 'posterior';
+export type CutType = 'transverse' | 'longitudinal' | 'tripartite';
 export type DeliveryMethod = 'submersion' | 'targeted';
 
 export interface DrugInfo {
@@ -10,12 +11,14 @@ export interface DrugInfo {
   name: string;
   nameKo: string;
   category: string;
+  categoryKo?: string;
   defaultUnit: string;
   minConc: number;
   maxConc: number;
   stepConc: number;
   typicalConc: number;
   description: string;
+  descriptionKo: string;
   mechanismDirect: string; // Stem cell / neoblast pathway
   mechanismIndirect: string; // Neuro-muscular / stress pathway
   molecularFormula?: string;
@@ -56,6 +59,7 @@ export interface ExperimentConfig {
   unit: string;
   exposureHours: number; // e.g. 24, 48, 72, continuous (168)
   cutLocation: CutLocation;
+  cutType?: CutType;
   deliveryMethod: DeliveryMethod;
 }
 
@@ -69,9 +73,17 @@ export interface DailyMetric {
   hyperkinesiaScore: number; // 0-100
   hyperkinesiaType: 'C-like' | 'Snake-like' | 'Screw-like' | 'Normal' | 'Hypokinesia';
   hyperkinesiaTypeLabelKo: string;
-  glidingSpeed: number; // 0-100% (smooth ciliary gliding locomotion)
+  glidingSpeed: number; // 0-100% (smooth ciliary gliding locomotion mm/s efficiency)
   stressIndex: number; // 0-100
   survivalRate: number; // %
+
+  // Detailed Nicotine & Behavioral Metrics
+  totalDistance?: number; // 총 이동 거리 (mm / min)
+  turnCount?: number; // 방향 전환 횟수 (회 / min)
+  bodyBendingDegree?: number; // 몸체 굽힘 정도 (°)
+  spasmFrequency?: number; // 경련/떨림 빈도 (회 / min)
+  lightAvoidanceResponse?: number; // 빛 회피 반응성 (0-100%)
+  motorRecoveryTimeHours?: number; // 운동 기능 회복 필요 시간 (hours)
 }
 
 export interface SimulationResult {
@@ -94,6 +106,14 @@ export interface SimulationResult {
   glidingSpeed: number; // 0-100% (ciliary locomotion efficiency)
   survivalRate: number; // %
   stressIndex: number; // 0-100
+  
+  // Detailed Nicotine & Behavioral Metrics (Endpoints)
+  totalDistance: number; // 총 이동 거리 (mm)
+  turnCount: number; // 방향 전환 횟수 (회/분)
+  bodyBendingDegree: number; // 몸체 굽힘 정도 (°)
+  spasmFrequency: number; // 경련/떨림 빈도 (회/분)
+  lightAvoidanceResponse: number; // 빛 회피 반응성 (%)
+  motorRecoveryTimeHours: number; // 운동 기능 회복 필요 시간 (시간)
   
   // Direct vs Indirect separation
   directNeoblastImpactScore: number; // 0-100 (mitosis & migration impairment)
@@ -120,6 +140,7 @@ export interface TargetedDeliveryTechParams {
   releaseKinetics: string; // e.g. "Zero-order local matrix diffusion (24-72h release)"
   neuroShieldingEfficiency: number; // e.g. 75% reduction in systemic CNS exposure
   blastemaTargetingAffinity: number; // e.g. 90% localized accumulation at wound site
+  diffusionRate: number; // e.g. 100% (40% - 200% dynamic drug diffusion coefficient)
   mmpCleavageTrigger: boolean; // Matrix Metalloproteinase wound-cleavable bonds
 }
 

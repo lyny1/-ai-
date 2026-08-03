@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { LiteratureEntry, DrugInfo, CutLocation } from '../types';
-import { Database, Download, Upload, Plus, X, Check, FileJson, FileSpreadsheet } from 'lucide-react';
+import { Database, Download, Upload, Plus, X, Check, FileJson, FileSpreadsheet, Search, RefreshCw, Sparkles, Globe } from 'lucide-react';
 
 interface DatabaseManagerModalProps {
   isOpen: boolean;
@@ -21,6 +21,11 @@ export const DatabaseManagerModal: React.FC<DatabaseManagerModalProps> = ({
 }) => {
   const [showAddForm, setShowAddForm] = useState(false);
 
+  // Live Search State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchMsg, setSearchMsg] = useState('');
+
   // New paper form state
   const [title, setTitle] = useState('');
   const [authors, setAuthors] = useState('');
@@ -38,6 +43,41 @@ export const DatabaseManagerModal: React.FC<DatabaseManagerModalProps> = ({
   const [scrunchingFreq, setScrunchingFreq] = useState(10);
   const [stressIndex, setStressIndex] = useState(60);
   const [notes, setNotes] = useState('');
+
+  const handleLiveSearch = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!searchQuery.trim() && !drugId) return;
+    setIsSearching(true);
+    setSearchMsg('Google AI / PubMed 실시간 논문 수집 중...');
+    try {
+      const selectedDrug = drugs.find((d) => d.id === drugId);
+      const res = await fetch('/api/search-literature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          drugName: selectedDrug?.name || 'nicotine',
+          query: searchQuery || `planarian neoblast mitosis cell division ${selectedDrug?.name || ''}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.papers && Array.isArray(data.papers) && data.papers.length > 0) {
+        data.papers.forEach((p: LiteratureEntry) => {
+          onAddPaper({
+            ...p,
+            id: p.id || `live-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+          });
+        });
+        setSearchMsg(`✅ 실시간 논문 ${data.papers.length}건을 성공적으로 수집하여 DB에 등록했습니다!`);
+        setSearchQuery('');
+      } else {
+        setSearchMsg('검색 결과 논문을 찾지 못했거나 응답이 비어있습니다.');
+      }
+    } catch (err: any) {
+      setSearchMsg('실시간 논문 수집 실패: ' + (err.message || '오류 발생'));
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -188,6 +228,56 @@ export const DatabaseManagerModal: React.FC<DatabaseManagerModalProps> = ({
           >
             <X className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Live Literature Search & Auto Collector Bar */}
+        <div className="p-3 bg-[#e2e8d5]/60 border border-[#c5d898] rounded-xl space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold text-[#4a5a30] flex items-center gap-1.5">
+              <Globe className="w-4 h-4 text-[#3d6a70]" />
+              <span>실시간 최신 논문 자동 수집 (Live PubMed / Scientific Literature Collector)</span>
+            </span>
+            <span className="text-[10px] bg-white text-[#3d6a70] font-bold px-2 py-0.5 rounded border border-[#b8d6dc]">
+              Google AI Grounded Search
+            </span>
+          </div>
+
+          <form onSubmit={handleLiveSearch} className="flex flex-col sm:flex-row items-center gap-2">
+            <div className="relative flex-1 w-full">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#7a7a70]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="예: planarian neoblast mitosis nicotine stem cell division..."
+                className="w-full pl-9 pr-3 py-1.5 bg-white border border-[#c5d898] rounded-xl text-xs text-[#1a1a1a] focus:outline-none focus:ring-2 focus:ring-[#3d6a70]"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={isSearching}
+              className="w-full sm:w-auto px-4 py-1.5 bg-[#3d6a70] hover:bg-[#2d5055] text-white text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0 disabled:opacity-50"
+            >
+              {isSearching ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>수집 중...</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-3.5 h-3.5 text-[#e2e8d5]" />
+                  <span>실시간 수집 및 DB 등록</span>
+                </>
+              )}
+            </button>
+          </form>
+
+          {searchMsg && (
+            <div className="text-[11px] font-semibold text-[#3d6a70] bg-white/80 p-2 rounded-lg border border-[#c5d898]">
+              {searchMsg}
+            </div>
+          )}
         </div>
 
         {/* Action Toolbar */}

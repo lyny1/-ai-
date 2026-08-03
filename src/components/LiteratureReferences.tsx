@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { LiteratureEntry, DrugInfo } from '../types';
-import { BookOpen, ExternalLink, ShieldCheck } from 'lucide-react';
+import { BookOpen, ExternalLink, ShieldCheck, Database, Sparkles } from 'lucide-react';
 
 interface LiteratureReferencesProps {
   database: LiteratureEntry[];
   currentDrugId: string;
   drugs: DrugInfo[];
   matchingPaper?: LiteratureEntry;
+  onOpenDatabaseModal?: () => void;
 }
 
 export const LiteratureReferences: React.FC<LiteratureReferencesProps> = ({
@@ -14,6 +15,7 @@ export const LiteratureReferences: React.FC<LiteratureReferencesProps> = ({
   currentDrugId,
   drugs,
   matchingPaper,
+  onOpenDatabaseModal,
 }) => {
   const [filterDrugId, setFilterDrugId] = useState<string>('all');
 
@@ -32,8 +34,18 @@ export const LiteratureReferences: React.FC<LiteratureReferencesProps> = ({
           </h2>
         </div>
 
-        {/* Drug Filter dropdown */}
+        {/* Drug Filter & Live Collection Button */}
         <div className="flex items-center space-x-2">
+          {onOpenDatabaseModal && (
+            <button
+              onClick={onOpenDatabaseModal}
+              className="px-3 py-1 bg-[#3d6a70] hover:bg-[#2d5055] text-white text-xs font-bold rounded-lg flex items-center gap-1.5 transition cursor-pointer"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#e2e8d5]" />
+              <span>실시간 논문 DB 수집/관리</span>
+            </button>
+          )}
+
           <span className="text-xs text-[#7a7a70]">약물 필터:</span>
           <select
             value={filterDrugId}
